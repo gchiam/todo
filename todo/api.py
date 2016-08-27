@@ -1,3 +1,4 @@
+import functools
 import uuid
 
 import flask
@@ -14,12 +15,18 @@ api = Api(app)
 TODOS = {}
 
 
-def abort_if_todo_doesnt_exist(todo_id):
-    if todo_id not in TODOS:
-        abort(
-            404,
-            message="Todo {} doesn't exist".format(todo_id)
-        )
+def validate_todo_id(func):
+
+    @functools.wraps(func)
+    def decorator(self, todo_id):
+        if todo_id not in TODOS:
+            abort(
+                404,
+                message="Todo {} doesn't exist".format(todo_id)
+            )
+        func(self, todo_id)
+
+    return decorator
 
 
 parser = reqparse.RequestParser()
@@ -29,12 +36,12 @@ parser.add_argument('task', required=True)
 class Todo(Resource):
     """Show a single todo item and lets you delete a todo item."""
 
+    @validate_todo_id
     def get(self, todo_id):
-        abort_if_todo_doesnt_exist(todo_id)
         return TODOS[todo_id]
 
+    @validate_todo_id
     def delete(self, todo_id):
-        abort_if_todo_doesnt_exist(todo_id)
         del TODOS[todo_id]
         return '', 204
 
